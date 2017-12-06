@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/beans/spring-context.xsd
+                           http://www.springframework.org/schema/aop
+                           http://www.springframework.org/schema/beans/spring-aop.xsd
+                           http://www.springframework.org/schema/tx
+                           http://www.springframework.org/schema/beans/spring-tx.xsd">
+
+    <!--引入外部文件-->
+    <context:property-placeholder location="classpath:cn/answering/config/db.properties"></context:property-placeholder>
+
+    <!--扫描service-->
+    <context:component-scan base-package="cn.answering.service"></context:component-scan>
+
+    <!--1.数据源配置-->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="user" value="${db.username}"></property>
+        <property name="password" value="${db.password}"></property>
+        <property name="driverClass" value="${db.driver}"></property>
+        <property name="jdbcUrl" value="${db.url}"></property>
+    </bean>
+
+
+    <!--2.hibernate的SessionFactory配置-->
+    <bean id="sqlSessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <!--设置数据源-->
+        <property name="dataSource" ref="dataSource"></property>
+        <!--设置扫描的包,可以是放置*.hbm.xml的包，也可以是注解的类-->
+        <property name="packagesToScan">
+            <list>
+                <value>cn.answering.model</value>
+            </list>
+        </property>
+        <!--hibernate的其他配置-->
+        <property name="hibernateProperties">
+           <props>
+               <!--设置hibernate方言-->
+               <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+               <!--设置sql是否格式，是否显示-->
+               <prop key="format_sql">true</prop>
+               <prop key="show_sql">true</prop>
+               <!--设置是否生成表结构-->
+               <prop key="hbm2ddl.auto">create</prop>
+           </props>
+        </property>
+    </bean>
+
+    <!--3.事务配置-->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sqlSessionFactory"></property>
+    </bean>
+
+    <!--事务详情，也可以配置开启注解，用@Transaction形式-->
+    <!--
+        <tx:annotation-driven transaction-manager="transactionManager"></tx:annotation-driven>
+    -->
+    <tx:advice id="tx" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="save**"/>
+        </tx:attributes>
+    </tx:advice>
+    <!--4.切面编程来处理事务-->
+    <aop:config>
+        <!--配置切面-->
+        <aop:pointcut id="txpc" expression="execution(* cn.answering.service.*.*(..))"></aop:pointcut>
+        <!---->
+        <aop:advisor advice-ref="tx" pointcut-ref="txpc"></aop:advisor>
+    </aop:config>
+
+    <!--aop配置生效-->
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+</beans>
